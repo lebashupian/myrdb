@@ -1,0 +1,95 @@
+#!/usr/bin/env ruby
+
+require "wxl_function"
+require "wxl_console"
+
+class C_行 < Hash
+	def 新增字段(*字段)
+		self.each_pair {|k,v|
+			self[k]=nil
+		}		
+	end
+	def 填充数据(*数据)
+		i=0
+		self.each_pair {|k,v|
+			self[k]=数据[i]
+			i += 1
+		}
+	end
+end
+
+module M_持久化
+
+	def 加载(文件句柄)
+		Marshal.load 文件句柄
+	end
+	
+	def 保存(表,文件句柄)
+		Marshal.dump(表,文件句柄) 
+	end
+
+	module_function :加载,:保存
+end
+
+class C_表
+	def initialize(*字段)
+		@行模版=C_行.new.新增字段
+		字段.each {|x| @行模版[x]=nil}
+		@表数据=[]
+	end
+	def 字段
+		@行模版.keys
+	end
+	def 插入(*数据)
+		#
+		# 下面的*数据很关键，用这个方式成功的传递了参数
+		#
+		#@表数据 << @表类型.new(*数据)
+		@表数据 << @行模版.dup.填充数据(*数据)
+	end
+
+	def 全部
+		@表数据
+	end
+end
+
+class Array
+	alias :过滤 :select
+	alias :遍历 :each
+end
+
+
+if File.exist? 'backup.dump'
+	dump文件=File.new('backup.dump','r+')
+	表=M_持久化.加载 dump文件
+	表.全部.过滤{|记录| 
+		记录[:id] >=50 and
+		记录[:age] >=8800 and
+		记录[:name] == "wxl"
+	}.遍历 {|x|
+		p x
+	}
+	C_控制台.new.开启
+else
+	dump文件=File.new('backup.dump','w+')
+end	
+
+
+
+
+表=C_表.new :id,:name,:age,:addr
+p 表.字段
+50_0000.times {|x|
+	表.插入 x,M_公共函数.随机字符串(3),x**2,"bj"
+}
+
+表.全部.过滤{|记录| 
+	记录[:id] >=50 and
+	记录[:age] >=8800 and
+	记录[:name] == "wxl"
+}.遍历 {|x|
+	p x
+}
+
+M_持久化.保存 表,dump文件
+exit
